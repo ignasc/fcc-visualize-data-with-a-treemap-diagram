@@ -83,6 +83,60 @@ function getData(req1, req2, req3){
 
 /*Main program function*/
 function main(dataArray){
-    console.log("Main function called, data ready: " + dataArray);
+
+    const videoGameData = dataArray[2];
+    console.log(videoGameData);
+
+    /*Main canvas for the treemap*/
+    const svg = d3.select("#treemap-diagram");
+
+    /*Tooltips for each square*/
+    const toolTip = d3.select("body")
+        .append("div")
+        .attr("id", "tooltip")
+        .style("opacity", 0);
+
+        svg.attr("width", chartWidth)
+        .attr("height", chartHeight)
+        /*center svg element*/
+        .style("margin-left", (d)=>{
+               if(pageWidth - chartWidth <=0) {
+                      return 0 + "px";
+               };
+               return (pageWidth - chartWidth)/2 + "px";
+        })
+        .style("margin-top", "20px");
+
+    /*structure data in a way that d3.treemap can work with it. Using d3.hierarchy for that*/
+    var drawTreeMap = d3.hierarchy(videoGameData)
+        .sum(d=>d.value)
+        .sort((a,b)=>b.value - a.value);
+    
+    /*create a treemap layout*/
+    const treeMap = d3.treemap();
+
+    /*set treemap size and padding between rectangles*/
+    treeMap.size([chartWidth, chartHeight])
+           .padding(2);
+
+    /*pass data to the created treemap*/
+    const root = treeMap(drawTreeMap);
+
+    svg.selectAll("rect")
+        .data(root.leaves())
+        .enter()
+        .append("rect")
+        .attr("x", d=>d.x0)
+        .attr("y", d=>d.y0)
+        .attr("width", d=>d.x1-d.x0)
+        .attr("height", d=>d.y1-d.y0)
+        .style("fill", "hsl(147, 50%, 47%)");
+        
+
+    /*
+    study a little bit more
+    https://dev.to/hajarnasr/treemaps-with-d3-js-55p7
+    */
+    console.log(root);
 
 };
