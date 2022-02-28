@@ -72,7 +72,6 @@ function getData(req1, req2, req3){
     /*Get all data and then execute main() function*/
     Promise.all([p1, p2, p3])
         .then((values)=>{
-            console.log("All data loaded succesfully");
             main(values);
         })
         .catch((values)=>{
@@ -85,7 +84,6 @@ function getData(req1, req2, req3){
 function main(dataArray){
 
     const videoGameData = dataArray[2];
-    console.log(videoGameData);
 
     /*Main canvas for the treemap*/
     const svg = d3.select("#treemap-diagram");
@@ -122,7 +120,13 @@ function main(dataArray){
     /*pass data to the created treemap*/
     const root = treeMap(drawTreeMap);
 
-    svg.selectAll("rect")
+    /*
+    creating an array of all values to determine scaling of each color for each category.
+    Data will be stored to salesData and later color will be applied after processing this data.
+    */
+   let salesData = [];
+
+    svg.append("g").selectAll("rect")
         .data(root.leaves())
         .enter()
         .append("rect")
@@ -130,13 +134,98 @@ function main(dataArray){
         .attr("y", d=>d.y0)
         .attr("width", d=>d.x1-d.x0)
         .attr("height", d=>d.y1-d.y0)
-        .style("fill", "hsl(147, 50%, 47%)");
+        .attr("data-name", d=>d.data["name"])
+        .attr("data-category", d=>d.data["category"])
+        .attr("data-value", d=>{
+            /*store value for color scaling*/
+            salesData.push(parseInt(d.data["value"]));
+            return d.data["value"];
+        })
+        .attr("id", "data-block")
+        
+        .on("mouseover", (pelesEvent)=>{
+            toolTip
+            .transition()
+            .duration(100)
+            .style("opacity", 0.9);
+
+            toolTip
+            .html(
+                   pelesEvent.target.attributes.getNamedItem("data-name").nodeValue +
+
+                   "</br>" +
+
+                   "Category: " +
+
+                   pelesEvent.target.attributes.getNamedItem("data-category").nodeValue +
+
+                   "</br>" + 
+
+                   "Sales: " + 
+
+                   pelesEvent.target.attributes.getNamedItem("data-value").nodeValue
+            )
+            .style("position", "fixed")
+            .style("background-color", "white")
+            .style("width", "25ch")
+            .style("border-radius", "5px")
+            .style("box-shadow", "0px 5px 10px rgba(44, 72, 173, 0.5)")
+            /*tooltip positioning by getting data from mouseover event target*/
+            .style("margin-left", pelesEvent.layerX + "px")
+            .style("Top",  (pelesEvent.layerY-80) + "px")
+
+            .attr("data-name", pelesEvent.target.attributes.getNamedItem("data-name").nodeValue)
+            .attr("data-category", pelesEvent.target.attributes.getNamedItem("data-category").nodeValue)
+            .attr("data-value", pelesEvent.target.attributes.getNamedItem("data-value").nodeValue);
+     })
+        .on("mouseout", ()=>{
+                toolTip
+                .transition()
+                .duration(100)
+                .style("opacity", 0);
+        });
+
+    /*Apply color for each data rectangle*/
+    const colorScaleData = d3.scaleLinear()
+        .domain([
+            d3.min(salesData),
+            d3.max(salesData)
+        ])
+        .range([50, 100])
+    
+
+    svg.selectAll("rect")
+        .style("fill", d=>{
+            return "hsl(" + "0" + ", " + colorScaleData(d.data["value"]) + "%, 50%)"
+        })
+
+    svg.select("g").selectAll("text")
+        .data(root.leaves())
+        .enter()
+        .append("text")
+        .attr("id", "block-description")
+        .attr("x", d=>d.x0+2)
+        .attr("y", d=>{return d.y0+20})
+        .attr("text-anchor", "start")
+        .text((d)=>d.data["name"]);
+
+    /*Shift whole treemap down for title*/
+    svg.select("g")
+        .attr("transform", "translate(0," + padding + ")");
+
+    svg.append("text")
+        .attr("x", chartWidth / 2)
+        .attr("y", padding / 2)
+        .attr("text-anchor", "middle")
+        .attr("id", "title-id")
+        .text(root.data["name"]);
+
+    
         
 
     /*
     study a little bit more
     https://dev.to/hajarnasr/treemaps-with-d3-js-55p7
     */
-    console.log(root);
-
+    console.log(salesData);
 };
