@@ -6,7 +6,7 @@ Movie Sales: https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/mo
 
 Video Game Sales: https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/video-game-sales-data.json
 */
-
+/*Using one if the 3 data sets below. Video game sales data is chosen.*/
 const JSON_KICKSTARTER = "https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/kickstarter-funding-data.json";
 
 const JSON_MOVIE = "https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/movie-data.json";
@@ -16,12 +16,12 @@ const JSON_GAMES = "https://cdn.freecodecamp.org/testable-projects-fcc/data/tree
 /*Set up SVG canvas to work on*/
 const padding = 60;
 const pageWidth  = document.documentElement.scrollWidth;
-/*reducing page height by padding value to get rid of scroll bars*/
-const pageHeight = document.documentElement.scrollHeight-padding;
+/*reducing page height by padding value to get rid of scroll bars if page height is bigger than 1024*/
+const pageHeight = document.documentElement.scrollHeight<1024?1024:document.documentElement.scrollHeight-padding;
 const chartWidth = 1024;
 const chartHeight = pageHeight*0.8;/*tree map takes 80% of page height, the rest 20% is for legend*/
 
-/*colors for categories*/
+/*colors for categories. This should be changed to avoid hard coded colours in case number of items change in the future*/
 const colorStyles = [
     "red",
     "purple",
@@ -99,7 +99,7 @@ function getData(req1, req2, req3){
             main(values);
         })
         .catch((values)=>{
-            console.log("There was a problem getting all data: " + values);
+            console.log("There was a problem durin main() function execution: " + values);
         });
 
 };
@@ -144,10 +144,7 @@ function main(dataArray){
     /*pass data to the created treemap*/
     const root = treeMap(drawTreeMap);
 
-    /*
-    creating an array of all values to determine scaling of each color for each category.
-    Data will be stored to salesData and later color will be applied after processing this data.
-    */
+    /*Object to store colors for each category*/
    let salesDataCategories = {};
 
     svg.append("g").selectAll("rect")
@@ -160,8 +157,8 @@ function main(dataArray){
         .attr("height", d=>d.y1-d.y0)
         .attr("data-name", d=>d.data["name"])
         .attr("data-category", d=>{
+			/*Asigning color for each category here, since I am accessing category data for attribute*/
             if(!salesDataCategories.hasOwnProperty(d.data["category"])){
-                /*Asign color style to each category*/
                 salesDataCategories[d.data["category"]] = "";
                 salesDataCategories[d.data["category"]] = colorStyles[Object.keys(salesDataCategories).length-1];
             };
@@ -223,15 +220,16 @@ function main(dataArray){
         .enter()
         .append("text")
         .attr("id", "block-description")
-        .attr("x", d=>d.x0+2)
-        .attr("y", d=>{return d.y0+20})
+        .attr("x", d=>d.x0 + 2)
+        .attr("y", d=>{return d.y0 + 20})
         .attr("text-anchor", "start")
         .text((d)=>d.data["name"]);
 
-    /*Shift whole treemap down for title*/
+    /*Shift whole treemap down to make room for title*/
     svg.select("g")
         .attr("transform", "translate(0," + padding + ")");
 
+	/*add a title*/
     svg.append("text")
         .attr("x", chartWidth / 2)
         .attr("y", padding / 2)
@@ -239,59 +237,80 @@ function main(dataArray){
         .attr("id", "title")
         .text(root.data["name"]);
 
-    /*Generate legend*/
+    /*Preparing data for legend*/
     let legendZeroCoordinate = chartHeight + padding/3;/*Offset from tree map with a gap of 1/3 of padding*/
-    let legendEntryRowOffset = (pageHeight - legendZeroCoordinate)/6;
+    let legendEntryRowOffset = (pageHeight - legendZeroCoordinate)/6;/*legend item row offset*/
     /*
     generate starting coordinates for each legend entry. Legend layout will be 3 columns of 6 entries each.
+	1	7	13
+	2	8	14
+	3	9	15
+	4	10	16
+	5	11	17
+	6	12	18
+	
+	Rows in first column are multiplied by index number.
+	Rows in second column are multiplied by (index number - 6).
+	Rows in third column are multiplied by (index number - 12).
+	This is to trim down the index to 1-6 and use row offset with 1-6 as multiplier.
     */
     let dataLength = Object.keys(salesDataCategories).length-1;
-    let legendDataObject = {};
+	let dataLegendArray = Object.keys(salesDataCategories);
+    let legendDataObject = {};/*contains [x,y] coordinates for each category item for legend*/
+	let rectangleDimm = 20; /*Size of rectangle icon in legend*/
+	
     for(let i = 0; i <= dataLength; i++){
-        console.log("Legend name: " + Object.keys(salesDataCategories)[i]);
+        let offset = 0; /*first column*/
+		let secondColumn = chartWidth / 3;
+		let thirdColumn = chartWidth * (2 / 3);
+		
+		let xPos = 0;
+		let yPos = 0;
 
-        let offset = 0;
-        if(i>=6 && i<12){
-            
+	       /*set item row and column position based on index number*/
+        if(i+1<=6){/*first 6 items (column 1), using yPos = 0*/
+			yPos = i*legendEntryRowOffset;
         };
-        if(i>=12){
-            
+        if(i+1>6 && i+1<=12){/*second 6 items (column 1)*/
+            xPos = secondColumn;
+			yPos = (i-6)*legendEntryRowOffset;
         };
+		if(i+1>12){/*last 6 items (column 3)*/
+			xPos = thirdColumn;
+			yPos = (i-12)*legendEntryRowOffset;
+		};
+		/*asign coordinates for each category*/
+		legendDataObject[dataLegendArray[i]] = [xPos, yPos];
     };
-
+	/*Generate legend*/
     svg.append("g")
         .attr("id", "legend")
         .selectAll("rect")
         .data(Object.keys(salesDataCategories))
         .enter()
         .append("rect")
-        .attr("width", 20)
-        .attr("height", 20)
-        .style("fill", "blue")
-        .attr("x", (d, i)=>{
-            console.log(d + " " + i);
-            let firstColumn = 0;
-            let secondColumn = chartWidth/3;
-            let thirdColumn = chartWidth*2/3;
-            let offset = 0;
-            if(i>=6 && i<12){
-                offset = secondColumn;
-            };
-            if(i>=12){
-                offset = thirdColumn;
-            };
-            return offset;
-        })
-        .attr("y", (d, i)=>{
-            return legendZeroCoordinate;
-        });
-
-    
-        
-
+        .attr("width", rectangleDimm)
+        .attr("height", rectangleDimm)
+        .style("fill", d=>salesDataCategories[d])
+		.style("stroke", "gray")
+        .attr("x", d=>legendDataObject[d][0])
+        .attr("y", d=>legendDataObject[d][1]);
+		
+	svg.select("#legend").selectAll("text")
+        .data(Object.keys(salesDataCategories))
+        .enter()
+		.append("text")
+		.text(d=>d + " sales")
+		.style("fill", "black")
+		.attr("x", d=>legendDataObject[d][0] + rectangleDimm * 2)
+		.attr("y", d=>legendDataObject[d][1] + (rectangleDimm * 0.8))/*0.8 is manual adjustment to align text with rectangle*/
+		.attr("text-anchor", "left");
+	
+	/*Shift legend table below the tree map*/
+	svg.select("#legend")
+		.attr("transform", "translate(0," + legendZeroCoordinate + ")");
     /*
     study a little bit more
     https://dev.to/hajarnasr/treemaps-with-d3-js-55p7
     */
-    console.log(salesDataCategories);
 };
