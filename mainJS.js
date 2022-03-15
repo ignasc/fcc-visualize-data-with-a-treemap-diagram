@@ -151,6 +151,7 @@ function main(dataArray){
         .data(root.leaves())
         .enter()
         .append("rect")
+	.attr("class", "tile")
         .attr("x", d=>d.x0)
         .attr("y", d=>d.y0)
         .attr("width", d=>d.x1-d.x0)
@@ -165,7 +166,6 @@ function main(dataArray){
             return d.data["category"];
         })
         .attr("data-value", d=>d.data["value"])
-        .attr("id", "data-block")
         
         .on("mouseover", (pelesEvent)=>{
             toolTip
@@ -236,6 +236,14 @@ function main(dataArray){
         .attr("text-anchor", "middle")
         .attr("id", "title")
         .text(root.data["name"]);
+		
+	/*add a description*/
+	svg.append("text")
+        .attr("x", chartWidth / 2)
+        .attr("y", padding*0.9)
+        .attr("text-anchor", "middle")
+        .attr("id", "description")
+        .text("Top 100 video games sold on each of gaming platforms");
 
     /*Preparing data for legend*/
     let legendZeroCoordinate = chartHeight + padding/3;/*Offset from tree map with a gap of 1/3 of padding*/
@@ -267,7 +275,7 @@ function main(dataArray){
 		let xPos = 0;
 		let yPos = 0;
 
-	       /*set item row and column position based on index number*/
+		/*set item row and column position based on index number*/
         if(i+1<=6){/*first 6 items (column 1), using yPos = 0*/
 			yPos = i*legendEntryRowOffset;
         };
@@ -289,26 +297,27 @@ function main(dataArray){
         .data(Object.keys(salesDataCategories))
         .enter()
         .append("rect")
+	.attr("class", "legend-item")
         .attr("width", rectangleDimm)
         .attr("height", rectangleDimm)
         .style("fill", d=>salesDataCategories[d])
-		.style("stroke", "gray")
+	.style("stroke", "gray")
         .attr("x", d=>legendDataObject[d][0])
         .attr("y", d=>legendDataObject[d][1]);
 		
 	svg.select("#legend").selectAll("text")
         .data(Object.keys(salesDataCategories))
         .enter()
-		.append("text")
-		.text(d=>d + " sales")
-		.style("fill", "black")
-		.attr("x", d=>legendDataObject[d][0] + rectangleDimm * 2)
-		.attr("y", d=>legendDataObject[d][1] + (rectangleDimm * 0.8))/*0.8 is manual adjustment to align text with rectangle*/
-		.attr("text-anchor", "left");
+	.append("text")
+	.text(d=>d + " sales")
+	.style("fill", "black")
+	.attr("x", d=>legendDataObject[d][0] + rectangleDimm * 2)
+	.attr("y", d=>legendDataObject[d][1] + (rectangleDimm * 0.8))/*0.8 is manual adjustment to align text with rectangle*/
+	.attr("text-anchor", "left");
 	
 	/*Shift legend table below the tree map*/
 	svg.select("#legend")
-		.attr("transform", "translate(0," + legendZeroCoordinate + ")");
+	.attr("transform", "translate(0," + legendZeroCoordinate + ")");
     /*
     study a little bit more
     https://dev.to/hajarnasr/treemaps-with-d3-js-55p7
