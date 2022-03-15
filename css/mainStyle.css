@@ -1,4 +1,3 @@
-
 #root {
     min-width: 100vw;
 }
@@ -9,4 +8,8 @@
 
 #title {
     font-size: 2em;
+}
+
+#description {
+    font-size: 1em;
 }
