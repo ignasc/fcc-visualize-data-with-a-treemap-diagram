@@ -63,7 +63,7 @@ function getData(req1, req2, req3){
             let jsonDATA = JSON.parse(req1.responseText);
             resolve(jsonDATA);
         };
-        req3.onerror = function(){
+        req1.onerror = function(){
             reject(JSON_KICKSTARTER);
         };
     
@@ -76,7 +76,7 @@ function getData(req1, req2, req3){
             let jsonDATA = JSON.parse(req2.responseText);
             resolve(jsonDATA);
         };
-        req3.onerror = function(){
+        req2.onerror = function(){
             reject(JSON_MOVIE);
         };
     });
