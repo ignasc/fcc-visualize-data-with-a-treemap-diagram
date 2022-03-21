@@ -3,7 +3,8 @@
 }
 
 #block-description {
-    color: red;
+	font-family: 'Roboto Mono', monospace;
+	font-size: 10px;
 }
 
 #title {
@@ -12,4 +13,32 @@
 
 #description {
     font-size: 1em;
+}
+
+.tile:hover {
+	stroke: AliceBlue !important;
+	stroke-width: 5px;
+}
+
+.animated {
+	/*animation duration is set random in JS file*/
+	animation-name: fadein;
+}
+/*tile class is listed seperately from "animated" to pass the test requirement of " class="tile" "*/
+.tile {
+	animation-name: fadein;
+}
+
+#legend {
+	animation-name: fadein;
+	animation-duration: 2s;
+}
+
+@keyframes fadein {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 100;
+	}
 }
