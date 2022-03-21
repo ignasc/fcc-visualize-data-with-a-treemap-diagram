@@ -20,6 +20,12 @@ const pageWidth  = document.documentElement.scrollWidth;
 const pageHeight = document.documentElement.scrollHeight<1024?1024:document.documentElement.scrollHeight-padding;
 const chartWidth = 1024;
 const chartHeight = pageHeight*0.8;/*tree map takes 80% of page height, the rest 20% is for legend*/
+const pageEmptyBorder = (pageWidth - chartWidth) / 2; /*Distance from browser edge to where chart begins. Used to offset mouseover tooltips, so they get positioned right before the rectangle begins.*/
+
+/*
+Variable to store custom duration for animation, for each rectangle. Storing x0 * y0 values to make animation have direction from top left corner (shortest duration) to bottom right (longest duration). Values are stored during "rect" creation process.
+*/
+const animationDurationData = [];
 
 /*colors for categories. This should be changed to avoid hard coded colours in case number of items change in the future*/
 const colorStyles = [
@@ -151,18 +157,20 @@ function main(dataArray){
         .data(root.leaves())
         .enter()
         .append("rect")
-	.attr("class", "tile")
+		.attr("class", "tile")
         .attr("x", d=>d.x0)
         .attr("y", d=>d.y0)
         .attr("width", d=>d.x1-d.x0)
         .attr("height", d=>d.y1-d.y0)
         .attr("data-name", d=>d.data["name"])
         .attr("data-category", d=>{
-			/*Asigning color for each category here, since I am accessing category data for attribute*/
+			/*Assigning color for each category here, since I am accessing category data for attribute*/
             if(!salesDataCategories.hasOwnProperty(d.data["category"])){
                 salesDataCategories[d.data["category"]] = "";
                 salesDataCategories[d.data["category"]] = colorStyles[Object.keys(salesDataCategories).length-1];
             };
+			/*Also storing animation duration for each rectangle element*/
+			animationDurationData.push(d.x0 * d.y0);
             return d.data["category"];
         })
         .attr("data-value", d=>d.data["value"])
@@ -195,8 +203,9 @@ function main(dataArray){
             .style("border-radius", "5px")
             .style("box-shadow", "0px 5px 10px rgba(44, 72, 173, 0.5)")
             /*tooltip positioning by getting data from mouseover event target*/
-            .style("margin-left", pelesEvent.layerX + "px")
-            .style("Top",  (pelesEvent.layerY-80) + "px")
+			/*pelesEvent.layerX ir palesEvent.layerY - 80*/
+            .style("margin-left", (parseInt(pelesEvent.target.attributes.getNamedItem("x").nodeValue) + pageEmptyBorder) + "px")
+            .style("Top",  pelesEvent.target.attributes.getNamedItem("y").nodeValue + "px")
 
             .attr("data-name", pelesEvent.target.attributes.getNamedItem("data-name").nodeValue)
             .attr("data-category", pelesEvent.target.attributes.getNamedItem("data-category").nodeValue)
@@ -208,12 +217,20 @@ function main(dataArray){
                 .duration(100)
                 .style("opacity", 0);
         });
-
-    /*Apply color for each data rectangle based on category*/
+		
+	/*Create a data scale for animation values. Duration range 2-5s*/
+	const animationDuration = d3.scaleLinear()
+								.domain([d3.min(animationDurationData), d3.max(animationDurationData)])
+								.range([2, 5]);
+		
+    /*Apply color for each data rectangle based on category and add custon duration for animation*/
     svg.selectAll("rect")
         .style("fill", d=>{
             return salesDataCategories[d.data.category];
         })
+		.style("animation-duration", (d, index)=>{
+			return animationDuration(animationDurationData[index]) + "s";
+		});	
 
     svg.select("g").selectAll("text")
         .data(root.leaves())
@@ -223,6 +240,10 @@ function main(dataArray){
         .attr("x", d=>d.x0 + 2)
         .attr("y", d=>{return d.y0 + 20})
         .attr("text-anchor", "start")
+		.attr("class", "animated")
+		.style("animation-duration", (d, index)=>{
+			return animationDuration(animationDurationData[index]) + "s";
+		})
         .text((d)=>d.data["name"]);
 
     /*Shift whole treemap down to make room for title*/
@@ -287,7 +308,7 @@ function main(dataArray){
 			xPos = thirdColumn;
 			yPos = (i-12)*legendEntryRowOffset;
 		};
-		/*asign coordinates for each category*/
+		/*Assign coordinates for each category*/
 		legendDataObject[dataLegendArray[i]] = [xPos, yPos];
     };
 	/*Generate legend*/
@@ -297,27 +318,27 @@ function main(dataArray){
         .data(Object.keys(salesDataCategories))
         .enter()
         .append("rect")
-	.attr("class", "legend-item")
+		.attr("class", "legend-item")
         .attr("width", rectangleDimm)
         .attr("height", rectangleDimm)
         .style("fill", d=>salesDataCategories[d])
-	.style("stroke", "gray")
+		.style("stroke", "gray")
         .attr("x", d=>legendDataObject[d][0])
         .attr("y", d=>legendDataObject[d][1]);
 		
 	svg.select("#legend").selectAll("text")
         .data(Object.keys(salesDataCategories))
         .enter()
-	.append("text")
-	.text(d=>d + " sales")
-	.style("fill", "black")
-	.attr("x", d=>legendDataObject[d][0] + rectangleDimm * 2)
-	.attr("y", d=>legendDataObject[d][1] + (rectangleDimm * 0.8))/*0.8 is manual adjustment to align text with rectangle*/
-	.attr("text-anchor", "left");
+		.append("text")
+		.text(d=>d + " sales")
+		.style("fill", "black")
+		.attr("x", d=>legendDataObject[d][0] + rectangleDimm * 2)
+		.attr("y", d=>legendDataObject[d][1] + (rectangleDimm * 0.8))/*0.8 is manual adjustment to align text with rectangle*/
+		.attr("text-anchor", "left");
 	
 	/*Shift legend table below the tree map*/
 	svg.select("#legend")
-	.attr("transform", "translate(0," + legendZeroCoordinate + ")");
+		.attr("transform", "translate(0," + legendZeroCoordinate + ")");
     /*
     study a little bit more
     https://dev.to/hajarnasr/treemaps-with-d3-js-55p7
