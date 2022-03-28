@@ -115,6 +115,24 @@ function main(dataArray){
 
     const videoGameData = dataArray[2];
 
+    /*structure data in a way that d3.treemap can work with it. Using d3.hierarchy for that*/
+    var drawTreeMap = d3.hierarchy(videoGameData)
+        .sum(d=>d.value)
+        .sort((a,b)=>b.value - a.value);
+    
+    /*create a treemap layout*/
+    const treeMap = d3.treemap();
+
+    /*set treemap size and padding between rectangles*/
+    treeMap.size([chartWidth, chartHeight-padding])
+           .padding(1);
+
+    /*pass data to the created treemap*/
+    const root = treeMap(drawTreeMap);
+
+    /*Object to store colors for each category*/
+   let salesDataCategories = {};
+
     /*Main canvas for the treemap*/
     const svg = d3.select("#treemap-diagram");
 
@@ -134,24 +152,6 @@ function main(dataArray){
                return (pageWidth - chartWidth)/2 + "px";
         })
         .style("margin-top", "20px");
-
-    /*structure data in a way that d3.treemap can work with it. Using d3.hierarchy for that*/
-    var drawTreeMap = d3.hierarchy(videoGameData)
-        .sum(d=>d.value)
-        .sort((a,b)=>b.value - a.value);
-    
-    /*create a treemap layout*/
-    const treeMap = d3.treemap();
-
-    /*set treemap size and padding between rectangles*/
-    treeMap.size([chartWidth, chartHeight-padding])
-           .padding(1);
-
-    /*pass data to the created treemap*/
-    const root = treeMap(drawTreeMap);
-
-    /*Object to store colors for each category*/
-   let salesDataCategories = {};
 
     svg.append("g").selectAll("rect")
         .data(root.leaves())
@@ -221,7 +221,7 @@ function main(dataArray){
 	/*Create a data scale for animation values. Duration range 2-5s*/
 	const animationDuration = d3.scaleLinear()
 								.domain([d3.min(animationDurationData), d3.max(animationDurationData)])
-								.range([2, 5]);
+								.range([1, 3]);
 		
     /*Apply color for each data rectangle based on category and add custon duration for animation*/
     svg.selectAll("rect")
