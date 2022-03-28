@@ -27,6 +27,7 @@
 /*tile class is listed seperately from "animated" to pass the test requirement of " class="tile" "*/
 .tile {
 	animation-name: fadein;
+	fill: lightgrey;
 }
 
 #legend {

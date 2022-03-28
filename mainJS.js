@@ -133,8 +133,22 @@ function main(dataArray){
     /*Object to store colors for each category*/
    let salesDataCategories = {};
 
+   /*Add title and description*/
+    document.getElementById("title").innerHTML = root.data["name"];
+    document.getElementById("description").innerHTML = "Top 100 video games sold on each of gaming platforms";
+
     /*Main canvas for the treemap*/
-    const svg = d3.select("#treemap-diagram");
+    const svg = d3.select("#treemap-diagram")
+        .attr("width", chartWidth)
+        .attr("height", pageHeight)
+        /*center svg element*/
+        .style("margin-left", ()=>{
+            if(pageWidth - chartWidth <=0) {
+                    return 0 + "px";
+            };
+            return (pageWidth - chartWidth)/2 + "px";
+        })
+        .style("margin-top", "20px");;
 
     /*Tooltips for each square*/
     const toolTip = d3.select("body")
@@ -142,16 +156,67 @@ function main(dataArray){
         .attr("id", "tooltip")
         .style("opacity", 0);
 
-        svg.attr("width", chartWidth)
+    const cell = svg.selectAll("g")
+        .data(root.leaves())
+        .enter()
+        .append("g")
+		.attr("class", "tile-group")
+        .attr("transform", d=>"translate(" + d.x0 + "," + d.y0 + ")");
+        
+    cell
+        .append("rect")
+		.attr("class", "tile")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", d=>d.x1-d.x0)
+        .attr("height", d=>d.y1-d.y0);
+    cell        
+        .append("text");
+};
+
+/*Main program function*
+function main(dataArray){
+
+    const videoGameData = dataArray[2];
+
+    /*structure data in a way that d3.treemap can work with it. Using d3.hierarchy for that*
+    var drawTreeMap = d3.hierarchy(videoGameData)
+        .sum(d=>d.value)
+        .sort((a,b)=>b.value - a.value);
+    
+    /*create a treemap layout*
+    const treeMap = d3.treemap();
+
+    /*set treemap size and padding between rectangles*
+    treeMap.size([chartWidth, chartHeight-padding])
+           .padding(1);
+
+    /*pass data to the created treemap*
+    const root = treeMap(drawTreeMap);
+
+    /*Object to store colors for each category*
+   let salesDataCategories = {};
+
+    /*Main canvas for the treemap*
+    const svg = d3.select("#treemap-diagram")
+        .attr("width", chartWidth)
         .attr("height", pageHeight)
-        /*center svg element*/
-        .style("margin-left", (d)=>{
-               if(pageWidth - chartWidth <=0) {
-                      return 0 + "px";
-               };
-               return (pageWidth - chartWidth)/2 + "px";
+        /*center svg element*
+        .style("margin-left", ()=>{
+            if(pageWidth - chartWidth <=0) {
+                    return 0 + "px";
+            };
+            return (pageWidth - chartWidth)/2 + "px";
         })
-        .style("margin-top", "20px");
+        .style("margin-top", "20px");;
+
+    /*Tooltips for each square*
+    const toolTip = d3.select("body")
+        .append("div")
+        .attr("id", "tooltip")
+        .style("opacity", 0);
+
+        svg
 
     svg.append("g").selectAll("rect")
         .data(root.leaves())
@@ -164,12 +229,12 @@ function main(dataArray){
         .attr("height", d=>d.y1-d.y0)
         .attr("data-name", d=>d.data["name"])
         .attr("data-category", d=>{
-			/*Assigning color for each category here, since I am accessing category data for attribute*/
+			/*Assigning color for each category here, since I am accessing category data for attribute*
             if(!salesDataCategories.hasOwnProperty(d.data["category"])){
                 salesDataCategories[d.data["category"]] = "";
                 salesDataCategories[d.data["category"]] = colorStyles[Object.keys(salesDataCategories).length-1];
             };
-			/*Also storing animation duration for each rectangle element*/
+			/*Also storing animation duration for each rectangle element*
 			animationDurationData.push(d.x0 * d.y0);
             return d.data["category"];
         })
@@ -203,7 +268,7 @@ function main(dataArray){
             .style("border-radius", "5px")
             .style("box-shadow", "0px 5px 10px rgba(44, 72, 173, 0.5)")
             /*tooltip positioning by getting data from mouseover event target*/
-			/*pelesEvent.layerX ir palesEvent.layerY - 80*/
+			/*pelesEvent.layerX ir palesEvent.layerY - 80*
             .style("margin-left", (parseInt(pelesEvent.target.attributes.getNamedItem("x").nodeValue) + pageEmptyBorder) + "px")
             .style("Top",  pelesEvent.target.attributes.getNamedItem("y").nodeValue + "px")
 
@@ -218,12 +283,12 @@ function main(dataArray){
                 .style("opacity", 0);
         });
 		
-	/*Create a data scale for animation values. Duration range 2-5s*/
+	/*Create a data scale for animation values. Duration range 2-5s*
 	const animationDuration = d3.scaleLinear()
 								.domain([d3.min(animationDurationData), d3.max(animationDurationData)])
 								.range([1, 3]);
 		
-    /*Apply color for each data rectangle based on category and add custon duration for animation*/
+    /*Apply color for each data rectangle based on category and add custon duration for animation*
     svg.selectAll("rect")
         .style("fill", d=>{
             return salesDataCategories[d.data.category];
@@ -246,28 +311,16 @@ function main(dataArray){
 		})
         .text((d)=>d.data["name"]);
 
-    /*Shift whole treemap down to make room for title*/
+    /*Shift whole treemap down to make room for title*
     svg.select("g")
         .attr("transform", "translate(0," + padding + ")");
 
-	/*add a title*/
-    svg.append("text")
-        .attr("x", chartWidth / 2)
-        .attr("y", padding / 2)
-        .attr("text-anchor", "middle")
-        .attr("id", "title")
-        .text(root.data["name"]);
-		
-	/*add a description*/
-	svg.append("text")
-        .attr("x", chartWidth / 2)
-        .attr("y", padding*0.9)
-        .attr("text-anchor", "middle")
-        .attr("id", "description")
-        .text("Top 100 video games sold on each of gaming platforms");
+	/*add a title and description*
+    document.getElementById("title").innerHTML = root.data["name"];
+    document.getElementById("description").innerHTML = "Top 100 video games sold on each of gaming platforms";
 
-    /*Preparing data for legend*/
-    let legendZeroCoordinate = chartHeight + padding/3;/*Offset from tree map with a gap of 1/3 of padding*/
+    /*Preparing data for legend*
+    let legendZeroCoordinate = chartHeight + padding/3;/*Offset from tree map with a gap of 1/3 of padding*
     let legendEntryRowOffset = (pageHeight - legendZeroCoordinate)/6;/*legend item row offset*/
     /*
     generate starting coordinates for each legend entry. Legend layout will be 3 columns of 6 entries each.
@@ -282,36 +335,36 @@ function main(dataArray){
 	Rows in second column are multiplied by (index number - 6).
 	Rows in third column are multiplied by (index number - 12).
 	This is to trim down the index to 1-6 and use row offset with 1-6 as multiplier.
-    */
+    *
     let dataLength = Object.keys(salesDataCategories).length-1;
 	let dataLegendArray = Object.keys(salesDataCategories);
-    let legendDataObject = {};/*contains [x,y] coordinates for each category item for legend*/
-	let rectangleDimm = 20; /*Size of rectangle icon in legend*/
+    let legendDataObject = {};/*contains [x,y] coordinates for each category item for legend*
+	let rectangleDimm = 20; /*Size of rectangle icon in legend*
 	
     for(let i = 0; i <= dataLength; i++){
-        let offset = 0; /*first column*/
+        let offset = 0; /*first column*
 		let secondColumn = chartWidth / 3;
 		let thirdColumn = chartWidth * (2 / 3);
 		
 		let xPos = 0;
 		let yPos = 0;
 
-		/*set item row and column position based on index number*/
-        if(i+1<=6){/*first 6 items (column 1), using yPos = 0*/
+		/*set item row and column position based on index number*
+        if(i+1<=6){/*first 6 items (column 1), using yPos = 0*
 			yPos = i*legendEntryRowOffset;
         };
-        if(i+1>6 && i+1<=12){/*second 6 items (column 1)*/
+        if(i+1>6 && i+1<=12){/*second 6 items (column 1)*
             xPos = secondColumn;
 			yPos = (i-6)*legendEntryRowOffset;
         };
-		if(i+1>12){/*last 6 items (column 3)*/
+		if(i+1>12){/*last 6 items (column 3)*
 			xPos = thirdColumn;
 			yPos = (i-12)*legendEntryRowOffset;
 		};
-		/*Assign coordinates for each category*/
+		/*Assign coordinates for each category*
 		legendDataObject[dataLegendArray[i]] = [xPos, yPos];
     };
-	/*Generate legend*/
+	/*Generate legend*
     svg.append("g")
         .attr("id", "legend")
         .selectAll("rect")
@@ -333,14 +386,14 @@ function main(dataArray){
 		.text(d=>d + " sales")
 		.style("fill", "black")
 		.attr("x", d=>legendDataObject[d][0] + rectangleDimm * 2)
-		.attr("y", d=>legendDataObject[d][1] + (rectangleDimm * 0.8))/*0.8 is manual adjustment to align text with rectangle*/
+		.attr("y", d=>legendDataObject[d][1] + (rectangleDimm * 0.8))/*0.8 is manual adjustment to align text with rectangle*
 		.attr("text-anchor", "left");
 	
-	/*Shift legend table below the tree map*/
+	/*Shift legend table below the tree map*
 	svg.select("#legend")
 		.attr("transform", "translate(0," + legendZeroCoordinate + ")");
     /*
     study a little bit more
     https://dev.to/hajarnasr/treemaps-with-d3-js-55p7
-    */
-};
+    *
+};*/
