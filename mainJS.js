@@ -22,6 +22,10 @@ const chartWidth = 1024;
 const chartHeight = pageHeight*0.8;/*tree map takes 80% of page height, the rest 20% is for legend*/
 const pageEmptyBorder = (pageWidth - chartWidth) / 2; /*Distance from browser edge to where chart begins. Used to offset mouseover tooltips, so they get positioned right before the rectangle begins.*/
 
+/*data text*/
+const textXpos = 0;
+const textYpos = 15;
+
 /*
 Variable to store custom duration for animation, for each rectangle. Storing x0 * y0 values to make animation have direction from top left corner (shortest duration) to bottom right (longest duration). Values are stored during "rect" creation process.
 */
@@ -105,7 +109,7 @@ function getData(req1, req2, req3){
             main(values);
         })
         .catch((values)=>{
-            console.log("There was a problem durin main() function execution: " + values);
+            console.log("There was a problem during main() function execution: " + values);
         });
 
 };
@@ -134,8 +138,15 @@ function main(dataArray){
    let salesDataCategories = {};
 
    /*Add title and description*/
-    document.getElementById("title").innerHTML = root.data["name"];
-    document.getElementById("description").innerHTML = "Top 100 video games sold on each of gaming platforms";
+    document.getElementById("title").innerHTML = "root.data[\"name\"]";
+    document.getElementById("description").innerHTML = "h2"; //Top 100 video games sold on each of gaming platforms
+		
+	/*Add event listener that pasitions tooltip just above the mouse cursor. The visibility and content of tooltip is adjusted when mouse goes over one of the rectangles. Static CSS is in mainStyle.css file*/
+	document.addEventListener("mousemove", (mouse)=>{
+		toolTip
+            .style("Left", (mouse.clientX + "px"))
+            .style("Top",  ((mouse.clientY - padding*1.5) + "px"));
+	});
 
     /*Main canvas for the treemap*/
     const svg = d3.select("#treemap-diagram")
@@ -162,16 +173,163 @@ function main(dataArray){
         .append("g")
 		.attr("class", "tile-group")
         .attr("transform", d=>"translate(" + d.x0 + "," + d.y0 + ")");
-        
+    
+	/*Add a rectangle for each data element*/
     cell
         .append("rect")
 		.attr("class", "tile")
         .attr("x", 0)
         .attr("y", 0)
         .attr("width", d=>d.x1-d.x0)
-        .attr("height", d=>d.y1-d.y0);
-    cell        
-        .append("text");
+        .attr("height", d=>d.y1-d.y0)
+		.attr("class", "tile")
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", d=>d.x1-d.x0)
+        .attr("height", d=>d.y1-d.y0)
+        .attr("data-name", d=>d.data["name"])
+        .attr("data-category", d=>{
+			/*Assigning color for each category here, since I am accessing category data for attribute*/
+            if(!salesDataCategories.hasOwnProperty(d.data["category"])){
+                salesDataCategories[d.data["category"]] = "";
+                salesDataCategories[d.data["category"]] = colorStyles[Object.keys(salesDataCategories).length-1];
+            };
+			/*Also storing animation duration for each rectangle element*/
+			animationDurationData.push(d.x0 * d.y0);
+            return d.data["category"];
+        })
+        .attr("data-value", d=>d.data["value"])
+        
+        .on("mouseover", (pelesEvent)=>{
+            toolTip
+            .transition()
+            .duration(100)
+            .style("opacity", 1);
+
+            toolTip
+            .html(
+                   pelesEvent.target.attributes.getNamedItem("data-name").nodeValue +
+
+                   "</br>" +
+
+                   "Category: " +
+
+                   pelesEvent.target.attributes.getNamedItem("data-category").nodeValue +
+
+                   "</br>" + 
+
+                   "Sales: " + 
+
+                   pelesEvent.target.attributes.getNamedItem("data-value").nodeValue
+            )
+
+            .attr("data-name", pelesEvent.target.attributes.getNamedItem("data-name").nodeValue)
+            .attr("data-category", pelesEvent.target.attributes.getNamedItem("data-category").nodeValue)
+            .attr("data-value", pelesEvent.target.attributes.getNamedItem("data-value").nodeValue);
+     })
+        .on("mouseout", ()=>{
+                toolTip
+                .transition()
+                .duration(100)
+                .style("opacity", 0);
+        });
+	/*Add a text element for each data rectangle*/
+    cell
+		.selectAll("text")
+		.data((d) => d)
+		.enter()
+        .append("text")
+		.attr("value", d=>d.data.name);
+	/*Add tspan element for each word in the name of each data rectangle*/
+	cell
+		.select("text").selectAll("tspan")
+		.data(d=>d.data.name.split(' '))//Splits the name into an array of words, separated by white space and it iterates through each element for that particular <text> element, adding as many <tspan> elements as needed
+		.enter()
+		.append("tspan")
+        .attr("x", textXpos)
+        .attr("y", textYpos)
+        .attr("dy", (d,i)=>{
+			//First word in array stays in initial position, every other word is shifted down
+			return i==0?textXpos:(textYpos*i);
+		})
+		.text(d=>d);
+		
+	/*Create legend*/
+	/*Preparing data for legend*/
+    let legendZeroCoordinate = chartHeight + padding/3;/*Offset from tree map with a gap of 1/3 of padding*/
+    let legendEntryRowOffset = (pageHeight - legendZeroCoordinate)/6;/*legend item row offset*/
+    /*
+    generate starting coordinates for each legend entry. Legend layout will be 3 columns of 6 entries each.
+	1	7	13
+	2	8	14
+	3	9	15
+	4	10	16
+	5	11	17
+	6	12	18
+	
+	Rows in first column are multiplied by index number.
+	Rows in second column are multiplied by (index number - 6).
+	Rows in third column are multiplied by (index number - 12).
+	This is to trim down the index to 1-6 and use row offset with 1-6 as multiplier.
+    */
+    let dataLength = Object.keys(salesDataCategories).length-1;
+	let dataLegendArray = Object.keys(salesDataCategories);
+    let legendDataObject = {};/*contains [x,y] coordinates for each category item for legend*/
+	let rectangleDimm = 20; /*Size of rectangle icon in legend*/
+	
+    for(let i = 0; i <= dataLength; i++){
+        let offset = 0; /*first column*/
+		let secondColumn = chartWidth / 3;
+		let thirdColumn = chartWidth * (2 / 3);
+		
+		let xPos = 0;
+		let yPos = 0;
+
+		/*set item row and column position based on index number*/
+        if(i+1<=6){/*first 6 items (column 1), using yPos = 0*/
+			yPos = i*legendEntryRowOffset;
+        };
+        if(i+1>6 && i+1<=12){/*second 6 items (column 1)*
+            xPos = secondColumn;
+			yPos = (i-6)*legendEntryRowOffset;
+        };
+		if(i+1>12){/*last 6 items (column 3)*/
+			xPos = thirdColumn;
+			yPos = (i-12)*legendEntryRowOffset;
+		};
+		/*Assign coordinates for each category*/
+		legendDataObject[dataLegendArray[i]] = [xPos, yPos];
+    };
+	/*Generate legend*/
+    svg.append("g")
+        .attr("id", "legend")
+        .selectAll("rect")
+        .data(Object.keys(salesDataCategories))
+        .enter()
+        .append("rect")
+		.attr("class", "legend-item")
+        .attr("width", rectangleDimm)
+        .attr("height", rectangleDimm)
+        .style("fill", d=>salesDataCategories[d])
+		.style("stroke", "gray")
+        .attr("x", d=>legendDataObject[d][0])
+        .attr("y", d=>legendDataObject[d][1]);
+		
+	svg.select("#legend").selectAll("text")
+        .data(Object.keys(salesDataCategories))
+        .enter()
+		.append("text")
+		.text(d=>d + " sales")
+		.style("fill", "black")
+		.attr("x", d=>legendDataObject[d][0] + rectangleDimm * 2)
+		.attr("y", d=>legendDataObject[d][1] + (rectangleDimm * 0.8))/*0.8 is manual adjustment to align text with rectangle*/
+		.attr("text-anchor", "left");
+	
+	/*Shift legend table below the tree map*/
+	svg.select("#legend")
+		.attr("transform", "translate(0," + legendZeroCoordinate + ")");
+		
+	
 };
 
 /*Main program function*
