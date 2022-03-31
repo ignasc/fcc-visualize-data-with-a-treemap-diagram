@@ -21,9 +21,17 @@ const pageHeight = document.documentElement.scrollHeight<1024?1024:document.docu
 const chartWidth = 1024;
 const chartHeight = pageHeight*0.8;/*tree map takes 80% of page height, the rest 20% is for legend*/
 const pageEmptyBorder = (pageWidth - chartWidth) / 2; /*Distance from browser edge to where chart begins. Used to offset mouseover tooltips, so they get positioned right before the rectangle begins.*/
+//legend canvas dimensions
+const legendWidth = chartWidth;
+const legendHeight = pageHeight - chartHeight;
+
+
+/*data text*/
+const textXpos = 0;
+const textYpos = 15;
 
 /*
-Variable to store custom duration for animation, for each rectangle. Storing x0 * y0 values to make animation have direction from top left corner (shortest duration) to bottom right (longest duration). Values are stored during "rect" creation process.
+Variable to store custom duration for animation, for each rectangle. Storing x0 * y0 values to make animation depend on both, height and width of rectangle and have direction from top left corner (shortest duration) to bottom right (longest duration). Values are stored during "rect" creation process.
 */
 const animationDurationData = [];
 
@@ -105,7 +113,7 @@ function getData(req1, req2, req3){
             main(values);
         })
         .catch((values)=>{
-            console.log("There was a problem durin main() function execution: " + values);
+            console.log("There was a problem during main() function execution: " + values);
         });
 
 };
@@ -124,7 +132,7 @@ function main(dataArray){
     const treeMap = d3.treemap();
 
     /*set treemap size and padding between rectangles*/
-    treeMap.size([chartWidth, chartHeight-padding])
+    treeMap.size([chartWidth, chartHeight])
            .padding(1);
 
     /*pass data to the created treemap*/
@@ -133,8 +141,41 @@ function main(dataArray){
     /*Object to store colors for each category*/
    let salesDataCategories = {};
 
+   /*Add title and description*/
+    document.getElementById("title").innerHTML = root.data["name"];
+    document.getElementById("description").innerHTML = "Top 100 video games sold on each of gaming platforms";
+		
+	/*Add event listener that pasitions tooltip just above the mouse cursor. The visibility and content of tooltip is adjusted when mouse goes over one of the rectangles. Static CSS is in mainStyle.css file*/
+	document.addEventListener("mousemove", (mouse)=>{
+		toolTip
+            .style("Left", (mouse.clientX + "px"))
+            .style("Top",  ((mouse.clientY - padding*1.5) + "px"));
+	});
+
     /*Main canvas for the treemap*/
-    const svg = d3.select("#treemap-diagram");
+    const svgTreeMap = d3.select("#treemap-diagram")
+        .attr("width", chartWidth)
+        .attr("height", chartHeight)
+        /*center svgTreeMap element*/
+        .style("margin-left", ()=>{
+            if(pageWidth - chartWidth <=0) {
+                    return 0 + "px";
+            };
+            return (pageWidth - chartWidth)/2 + "px";
+        });
+	
+	/*Main canvas for the treemap legend*/
+    const svgLegend = d3.select("#legend-element")
+        .attr("width", legendWidth)
+        .attr("height", legendHeight)
+        /*center svgTreeMap element*/
+        .style("margin-left", ()=>{
+            if(pageWidth - legendWidth <=0) {
+                    return 0 + "px";
+            };
+            return (pageWidth - legendWidth)/2 + "px";
+        })
+        .style("margin-top", "20px");
 
     /*Tooltips for each square*/
     const toolTip = d3.select("body")
@@ -142,24 +183,24 @@ function main(dataArray){
         .attr("id", "tooltip")
         .style("opacity", 0);
 
-        svg.attr("width", chartWidth)
-        .attr("height", pageHeight)
-        /*center svg element*/
-        .style("margin-left", (d)=>{
-               if(pageWidth - chartWidth <=0) {
-                      return 0 + "px";
-               };
-               return (pageWidth - chartWidth)/2 + "px";
-        })
-        .style("margin-top", "20px");
-
-    svg.append("g").selectAll("rect")
+    const cell = svgTreeMap.selectAll("g")
         .data(root.leaves())
         .enter()
+        .append("g")
+		.attr("class", "tile-group")
+        .attr("transform", d=>"translate(" + d.x0 + "," + d.y0 + ")");
+    
+	/*Add a rectangle for each data element*/
+    cell
         .append("rect")
 		.attr("class", "tile")
-        .attr("x", d=>d.x0)
-        .attr("y", d=>d.y0)
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("width", d=>d.x1-d.x0)
+        .attr("height", d=>d.y1-d.y0)
+		.attr("class", "tile")
+        .attr("x", 0)
+        .attr("y", 0)
         .attr("width", d=>d.x1-d.x0)
         .attr("height", d=>d.y1-d.y0)
         .attr("data-name", d=>d.data["name"])
@@ -179,7 +220,7 @@ function main(dataArray){
             toolTip
             .transition()
             .duration(100)
-            .style("opacity", 0.9);
+            .style("opacity", 1);
 
             toolTip
             .html(
@@ -197,15 +238,6 @@ function main(dataArray){
 
                    pelesEvent.target.attributes.getNamedItem("data-value").nodeValue
             )
-            .style("position", "fixed")
-            .style("background-color", "white")
-            .style("width", "25ch")
-            .style("border-radius", "5px")
-            .style("box-shadow", "0px 5px 10px rgba(44, 72, 173, 0.5)")
-            /*tooltip positioning by getting data from mouseover event target*/
-			/*pelesEvent.layerX ir palesEvent.layerY - 80*/
-            .style("margin-left", (parseInt(pelesEvent.target.attributes.getNamedItem("x").nodeValue) + pageEmptyBorder) + "px")
-            .style("Top",  pelesEvent.target.attributes.getNamedItem("y").nodeValue + "px")
 
             .attr("data-name", pelesEvent.target.attributes.getNamedItem("data-name").nodeValue)
             .attr("data-category", pelesEvent.target.attributes.getNamedItem("data-category").nodeValue)
@@ -218,55 +250,43 @@ function main(dataArray){
                 .style("opacity", 0);
         });
 		
-	/*Create a data scale for animation values. Duration range 2-5s*/
+	/*Create a data scale for animation values. Duration range 1-3s*/
 	const animationDuration = d3.scaleLinear()
 								.domain([d3.min(animationDurationData), d3.max(animationDurationData)])
 								.range([1, 3]);
 		
     /*Apply color for each data rectangle based on category and add custon duration for animation*/
-    svg.selectAll("rect")
+    svgTreeMap.selectAll("rect")
         .style("fill", d=>{
             return salesDataCategories[d.data.category];
         })
 		.style("animation-duration", (d, index)=>{
 			return animationDuration(animationDurationData[index]) + "s";
-		});	
-
-    svg.select("g").selectAll("text")
-        .data(root.leaves())
-        .enter()
+		});
+	
+	/*Add a text element for each data rectangle*/
+    cell
+		.selectAll("text")
+		.data((d) => d)
+		.enter()
         .append("text")
-        .attr("id", "block-description")
-        .attr("x", d=>d.x0 + 2)
-        .attr("y", d=>{return d.y0 + 20})
-        .attr("text-anchor", "start")
-		.attr("class", "animated")
-		.style("animation-duration", (d, index)=>{
-			return animationDuration(animationDurationData[index]) + "s";
+		.attr("value", d=>d.data.name);
+	/*Add tspan element for each word in the name of each data rectangle*/
+	cell
+		.select("text").selectAll("tspan")
+		.data(d=>d.data.name.split(' '))//Splits the name into an array of words, separated by white space and it iterates through each element for that particular <text> element, adding as many <tspan> elements as needed
+		.enter()
+		.append("tspan")
+        .attr("x", textXpos)
+        .attr("y", textYpos)
+        .attr("dy", (d,i)=>{
+			//First word in array stays in initial position, every other word is shifted down
+			return i==0?textXpos:(textYpos*i);
 		})
-        .text((d)=>d.data["name"]);
-
-    /*Shift whole treemap down to make room for title*/
-    svg.select("g")
-        .attr("transform", "translate(0," + padding + ")");
-
-	/*add a title*/
-    svg.append("text")
-        .attr("x", chartWidth / 2)
-        .attr("y", padding / 2)
-        .attr("text-anchor", "middle")
-        .attr("id", "title")
-        .text(root.data["name"]);
+		.text(d=>d);
 		
-	/*add a description*/
-	svg.append("text")
-        .attr("x", chartWidth / 2)
-        .attr("y", padding*0.9)
-        .attr("text-anchor", "middle")
-        .attr("id", "description")
-        .text("Top 100 video games sold on each of gaming platforms");
-
-    /*Preparing data for legend*/
+	/*Create legend*/
+	/*Preparing data for legend*/
     let legendZeroCoordinate = chartHeight + padding/3;/*Offset from tree map with a gap of 1/3 of padding*/
     let legendEntryRowOffset = (pageHeight - legendZeroCoordinate)/6;/*legend item row offset*/
     /*
@@ -285,7 +305,7 @@ function main(dataArray){
     */
     let dataLength = Object.keys(salesDataCategories).length-1;
 	let dataLegendArray = Object.keys(salesDataCategories);
-    let legendDataObject = {};/*contains [x,y] coordinates for each category item for legend*/
+    let legendDataObject = {};/*will contain [x,y] coordinates for each category item for legend*/
 	let rectangleDimm = 20; /*Size of rectangle icon in legend*/
 	
     for(let i = 0; i <= dataLength; i++){
@@ -312,7 +332,7 @@ function main(dataArray){
 		legendDataObject[dataLegendArray[i]] = [xPos, yPos];
     };
 	/*Generate legend*/
-    svg.append("g")
+    svgLegend.append("g")
         .attr("id", "legend")
         .selectAll("rect")
         .data(Object.keys(salesDataCategories))
@@ -326,7 +346,7 @@ function main(dataArray){
         .attr("x", d=>legendDataObject[d][0])
         .attr("y", d=>legendDataObject[d][1]);
 		
-	svg.select("#legend").selectAll("text")
+	svgLegend.select("#legend").selectAll("text")
         .data(Object.keys(salesDataCategories))
         .enter()
 		.append("text")
@@ -335,12 +355,5 @@ function main(dataArray){
 		.attr("x", d=>legendDataObject[d][0] + rectangleDimm * 2)
 		.attr("y", d=>legendDataObject[d][1] + (rectangleDimm * 0.8))/*0.8 is manual adjustment to align text with rectangle*/
 		.attr("text-anchor", "left");
-	
-	/*Shift legend table below the tree map*/
-	svg.select("#legend")
-		.attr("transform", "translate(0," + legendZeroCoordinate + ")");
-    /*
-    study a little bit more
-    https://dev.to/hajarnasr/treemaps-with-d3-js-55p7
-    */
+
 };

@@ -2,6 +2,12 @@
     min-width: 100vw;
 }
 
+h1,h2 {
+	text-align: center;
+	margin-top: 1rem;
+	margin-bottom: 1rem;
+}
+
 #block-description {
 	color: black;
 	font-size: 12px;
@@ -27,6 +33,14 @@
 /*tile class is listed seperately from "animated" to pass the test requirement of " class="tile" "*/
 .tile {
 	animation-name: fadein;
+	fill: lightgrey;
+}
+
+#tooltip{
+	position: fixed;
+	background-color: white;
+	width: 25ch; border-radius: 5px;
+	box-shadow: rgba(44, 72, 173, 0.5) 0px 5px 10px;
 }
 
 #legend {
